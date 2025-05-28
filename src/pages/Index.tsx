@@ -5,7 +5,7 @@ import MessageComposer from "@/components/MessageComposer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Send } from "lucide-react";
+import { Send, Loader2 } from "lucide-react";
 
 // Mock Data
 const mockSenders = [{
@@ -52,6 +52,7 @@ const Index = () => {
   const [selectedContactIds, setSelectedContactIds] = useState<string[]>([]);
   const [selectedListIds, setSelectedListIds] = useState<string[]>([]);
   const [message, setMessage] = useState<string>("");
+  const [isSending, setIsSending] = useState<boolean>(false);
   const {
     toast
   } = useToast();
@@ -61,10 +62,10 @@ const Index = () => {
   const handleListChange = (listId: string, checked: boolean) => {
     setSelectedListIds(prev => checked ? [...prev, listId] : prev.filter(id => id !== listId));
   };
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!selectedSenderId) {
       toast({
-        title: "Erro",
+        title: "Erro de Validação",
         description: "Por favor, selecione um remetente.",
         variant: "destructive"
       });
@@ -72,7 +73,7 @@ const Index = () => {
     }
     if (selectedContactIds.length === 0 && selectedListIds.length === 0) {
       toast({
-        title: "Erro",
+        title: "Erro de Validação",
         description: "Por favor, selecione ao menos um destinatário ou lista.",
         variant: "destructive"
       });
@@ -80,29 +81,67 @@ const Index = () => {
     }
     if (!message.trim()) {
       toast({
-        title: "Erro",
+        title: "Erro de Validação",
         description: "A mensagem não pode estar vazia.",
         variant: "destructive"
       });
       return;
     }
-    console.log("Simulando envio de mensagem:", {
+
+    setIsSending(true);
+
+    const payload = {
       senderId: selectedSenderId,
       contacts: selectedContactIds,
       lists: selectedListIds,
       message
-    });
-    toast({
-      title: "Mensagem Enviada (Simulação)",
-      description: "Suas mensagens foram enviadas com sucesso (simulação)."
-    });
+    };
 
-    // Reset form after "send"
-    // setSelectedContactIds([]);
-    // setSelectedListIds([]);
-    // setMessage("");
+    try {
+      console.log("Enviando payload para /api/send-whatsapp:", payload);
+      // Simulação de chamada de API com fetch
+      // Substitua '/api/send-whatsapp' pelo seu endpoint real
+      const response = await fetch('/api/send-whatsapp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        // Tenta ler a mensagem de erro do backend, se houver
+        const errorData = await response.json().catch(() => null);
+        const errorMessage = errorData?.message || `Falha ao enviar mensagens. Status: ${response.status}`;
+        throw new Error(errorMessage);
+      }
+
+      // const responseData = await response.json(); // Se o backend retornar dados
+      // console.log("Resposta da API:", responseData);
+
+      toast({
+        title: "Sucesso!",
+        description: "Requisição de envio de mensagens enviada para a API."
+      });
+
+      // Opcional: Resetar o formulário após o envio bem-sucedido
+      // setSelectedContactIds([]);
+      // setSelectedListIds([]);
+      // setMessage("");
+
+    } catch (error: any) {
+      console.error("Erro ao enviar mensagem:", error);
+      toast({
+        title: "Erro no Envio",
+        description: error.message || "Ocorreu um erro desconhecido ao tentar enviar as mensagens.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSending(false);
+    }
   };
-  return <div className="min-h-screen bg-slate-50 p-4 md:p-8">
+  return (
+    <div className="min-h-screen bg-slate-50 p-4 md:p-8">
       <header className="mb-8">
         <h1 className="text-3xl font-bold text-slate-800">WhatsApp Bulk Messenger</h1>
         <p className="text-slate-600">Crie e gerencie seus envios de mensagens em massa.</p>
@@ -133,13 +172,18 @@ const Index = () => {
             <MessageComposer message={message} onMessageChange={setMessage} />
           </CardContent>
           <CardFooter className="flex justify-end">
-            <Button onClick={handleSendMessage} size="lg" className="font-normal">
-              <Send className="mr-2 h-5 w-5" />
-              Enviar Mensagens
+            <Button onClick={handleSendMessage} size="lg" className="font-normal" disabled={isSending}>
+              {isSending ? (
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+              ) : (
+                <Send className="mr-2 h-5 w-5" />
+              )}
+              {isSending ? "Enviando..." : "Enviar Mensagens"}
             </Button>
           </CardFooter>
         </Card>
       </div>
-    </div>;
+    </div>
+  );
 };
 export default Index;
