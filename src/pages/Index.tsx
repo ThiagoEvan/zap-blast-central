@@ -98,10 +98,8 @@ const Index = () => {
     };
 
     try {
-      console.log("Enviando payload para /api/send-whatsapp:", payload);
-      // Simulação de chamada de API com fetch
-      // Substitua '/api/send-whatsapp' pelo seu endpoint real
-      const response = await fetch('/api/send-whatsapp', {
+      console.log("Enviando payload para o webhook n8n:", payload);
+      const response = await fetch('https://thievan.app.n8n.cloud/webhook/disparo', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -110,18 +108,24 @@ const Index = () => {
       });
 
       if (!response.ok) {
-        // Tenta ler a mensagem de erro do backend, se houver
-        const errorData = await response.json().catch(() => null);
-        const errorMessage = errorData?.message || `Falha ao enviar mensagens. Status: ${response.status}`;
+        let errorMessage = `Falha ao enviar mensagens para o n8n. Status: ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData?.message || errorData?.error?.message || JSON.stringify(errorData) || errorMessage;
+        } catch (e) {
+          // Não conseguiu parsear JSON, usa a mensagem de status
+          const textError = await response.text();
+          errorMessage = textError || errorMessage;
+        }
         throw new Error(errorMessage);
       }
 
-      // const responseData = await response.json(); // Se o backend retornar dados
-      // console.log("Resposta da API:", responseData);
+      // const responseData = await response.json(); // Se o n8n retornar dados que você queira processar
+      // console.log("Resposta do webhook n8n:", responseData);
 
       toast({
         title: "Sucesso!",
-        description: "Requisição de envio de mensagens enviada para a API."
+        description: "Requisição enviada para o webhook n8n."
       });
 
       // Opcional: Resetar o formulário após o envio bem-sucedido
@@ -130,10 +134,10 @@ const Index = () => {
       // setMessage("");
 
     } catch (error: any) {
-      console.error("Erro ao enviar mensagem:", error);
+      console.error("Erro ao enviar para o webhook n8n:", error);
       toast({
         title: "Erro no Envio",
-        description: error.message || "Ocorreu um erro desconhecido ao tentar enviar as mensagens.",
+        description: error.message || "Ocorreu um erro desconhecido ao tentar enviar para o n8n.",
         variant: "destructive"
       });
     } finally {
